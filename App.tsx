@@ -27,13 +27,15 @@ import {
   AlertCircle,
   X,
   ChevronRight,
+  ChevronLeft,
   Clock,
   AlertTriangle,
   RefreshCw,
   Settings,
   Monitor,
   LogOut,
-  User
+  User,
+  Trash2
 } from 'lucide-react';
 import LiveLogger from './components/LiveLogger';
 import HistoryTable from './components/HistoryTable';
@@ -71,6 +73,32 @@ const data30D: ChartDataPoint[] = [
   { date: '12/30', profit: 850000, volume: 7100 },
 ];
 
+// Helper to generate mock data for custom range
+const generateRandomData = (startStr: string, endStr: string): ChartDataPoint[] => {
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    const data: ChartDataPoint[] = [];
+    
+    // Safety check
+    if(isNaN(start.getTime()) || isNaN(end.getTime())) return data7D;
+    
+    let current = new Date(start);
+    // Limit to 60 points to prevent performance issues on huge ranges
+    let maxPoints = 60;
+    let count = 0;
+
+    while (current <= end && count < maxPoints) {
+        data.push({
+            date: `${current.getMonth() + 1}/${current.getDate()}`,
+            profit: Math.floor(Math.random() * 800000) + 50000,
+            volume: Math.floor(Math.random() * 8000) + 1000,
+        });
+        current.setDate(current.getDate() + 1);
+        count++;
+    }
+    return data.length > 0 ? data : data7D;
+};
+
 // Mock Data for Analysis
 const accountStatusData = [
   { name: 'Active', value: 39, color: '#22c55e' }, // green-500
@@ -98,6 +126,139 @@ const detailedProblemAccounts = [
     { id: 'Trader_Joe_Pro', issue: 'Network', time: '10s', status: 'Retry' },
     { id: 'Coin_Farmer_01', issue: 'Captcha', time: '5m', status: 'Paused' },
 ];
+
+// --- Custom Range Calendar Component ---
+const formatDate = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+};
+
+const RangeCalendar: React.FC<{
+    startDate: string;
+    endDate: string;
+    onChange: (start: string, end: string) => void;
+}> = ({ startDate, endDate, onChange }) => {
+    const [viewDate, setViewDate] = useState(new Date());
+    
+    // Parse input strings to Date objects for logic
+    const startObj = startDate ? new Date(startDate) : null;
+    const endObj = endDate ? new Date(endDate) : null;
+
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay(); // 0 is Sunday
+
+    const handlePrevMonth = () => setViewDate(new Date(year, month - 1, 1));
+    const handleNextMonth = () => setViewDate(new Date(year, month + 1, 1));
+
+    const handleDayClick = (day: number) => {
+        const clickedDate = new Date(year, month, day);
+        const clickedStr = formatDate(clickedDate);
+        
+        if (!startObj || (startObj && endObj)) {
+            // Reset and start new selection
+            onChange(clickedStr, '');
+        } else if (startObj && !endObj) {
+            // Complete selection
+            if (clickedDate < startObj) {
+                onChange(clickedStr, '');
+            } else {
+                onChange(formatDate(startObj), clickedStr);
+            }
+        }
+    };
+
+    const isSelected = (day: number) => {
+        const d = new Date(year, month, day);
+        const t = d.getTime();
+        const s = startObj?.getTime();
+        const e = endObj?.getTime();
+
+        if (s && t === s) return 'start';
+        if (e && t === e) return 'end';
+        if (s && e && t > s && t < e) return 'range';
+        return null;
+    };
+
+    const isToday = (day: number) => {
+        const today = new Date();
+        return today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
+    };
+
+    return (
+        <div className="select-none p-2">
+            {/* Calendar Header */}
+            <div className="flex items-center justify-between mb-6">
+                <button onClick={handlePrevMonth} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors">
+                    <ChevronLeft className="w-5 h-5" />
+                </button>
+                <div className="font-bold text-slate-800 text-lg">
+                    {year}年 {month + 1}月
+                </div>
+                <button onClick={handleNextMonth} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors">
+                    <ChevronRight className="w-5 h-5" />
+                </button>
+            </div>
+
+            {/* Weekday Labels */}
+            <div className="grid grid-cols-7 mb-3">
+                {['日', '一', '二', '三', '四', '五', '六'].map((d, i) => (
+                    <div key={i} className="text-center text-xs font-bold text-slate-400">
+                        {d}
+                    </div>
+                ))}
+            </div>
+
+            {/* Days Grid */}
+            <div className="grid grid-cols-7 gap-y-2">
+                {Array.from({ length: firstDay }).map((_, i) => (
+                    <div key={`empty-${i}`} />
+                ))}
+
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const day = i + 1;
+                    const status = isSelected(day);
+                    
+                    let containerClass = "relative w-full aspect-square flex items-center justify-center";
+                    let btnClass = "w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium transition-all relative z-10";
+                    let bgRangeClass = "absolute inset-y-0 bg-blue-50/80 z-0";
+
+                    if (status === 'start') {
+                        btnClass += " bg-blue-600 text-white shadow-md shadow-blue-200 hover:bg-blue-700";
+                        bgRangeClass += " left-1/2 right-0 rounded-l-none";
+                    } else if (status === 'end') {
+                        btnClass += " bg-blue-600 text-white shadow-md shadow-blue-200 hover:bg-blue-700";
+                        bgRangeClass += " left-0 right-1/2 rounded-r-none";
+                    } else if (status === 'range') {
+                        btnClass += " text-blue-700 hover:bg-blue-100/50";
+                        bgRangeClass += " left-0 right-0";
+                    } else {
+                        btnClass += " text-slate-700 hover:bg-slate-100";
+                        if(isToday(day)) btnClass += " ring-1 ring-blue-500 text-blue-600 font-bold";
+                    }
+
+                    return (
+                        <div key={day} className={containerClass}>
+                            {/* Visual Range Connector */}
+                            {(status === 'range' || (status === 'start' && endObj) || (status === 'end')) && (
+                                <div className={bgRangeClass} />
+                            )}
+                            
+                            <button onClick={() => handleDayClick(day)} className={btnClass}>
+                                {day}
+                            </button>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+// -------------------------------------
 
 const StatCard: React.FC<{ 
   title: string; 
@@ -362,14 +523,38 @@ const DashboardView: React.FC = () => {
   const [timeRange, setTimeRange] = useState('7D');
   const [isAlertVisible, setIsAlertVisible] = useState(true);
 
+  // Date Picker State
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<{start: string, end: string}>({ start: '', end: '' });
+  
+  // Use a backdrop click for closing instead of complex ref checking
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+        setIsDatePickerOpen(false);
+    }
+  };
+
+  const handleCustomDateApply = () => {
+    if (dateRange.start && dateRange.end) {
+        setTimeRange('CUSTOM');
+        setIsDatePickerOpen(false);
+    }
+  };
+
+  const handleClear = () => {
+      setDateRange({ start: '', end: '' });
+  };
+
   // Dynamic Data Logic
   const chartData = useMemo(() => {
     switch (timeRange) {
         case '24H': return data24H;
+        case '7D': return data7D;
         case '30D': return data30D;
+        case 'CUSTOM': return generateRandomData(dateRange.start, dateRange.end);
         default: return data7D;
     }
-  }, [timeRange]);
+  }, [timeRange, dateRange]);
 
   return (
     <div className="space-y-6">
@@ -409,7 +594,7 @@ const DashboardView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Main Profit Chart (2/3 width) */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-w-0 overflow-hidden">
+        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-w-0 relative">
           <div className="flex items-center justify-between mb-6">
             <div className="flex space-x-6 border-b border-transparent">
               <button className="pb-2 border-b-2 border-blue-500 text-blue-600 font-semibold text-sm">收益趋势</button>
@@ -421,7 +606,10 @@ const DashboardView: React.FC = () => {
                 {['24H', '7D', '30D'].map((range) => (
                     <button 
                         key={range}
-                        onClick={() => setTimeRange(range)}
+                        onClick={() => {
+                            setTimeRange(range);
+                            // setIsDatePickerOpen(false); // No need to auto close if open
+                        }}
                         className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
                             timeRange === range 
                             ? 'bg-white text-blue-600 shadow-sm' 
@@ -431,14 +619,21 @@ const DashboardView: React.FC = () => {
                         {range}
                     </button>
                 ))}
-                <button className="px-2 py-1 text-gray-400 hover:bg-gray-200 rounded-md">
+                
+                <button 
+                    onClick={() => setIsDatePickerOpen(true)}
+                    className={`px-2 py-1 rounded-md transition-all ${
+                        timeRange === 'CUSTOM'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-400 hover:bg-gray-200'
+                    }`}
+                >
                    <Calendar className="w-4 h-4" />
                 </button>
             </div>
           </div>
 
           <div className="h-[300px] w-full" style={{ minWidth: 0 }}>
-            {/* Added minWidth={0} minHeight={0} to suppress 'width(-1)' warning */}
             <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
@@ -484,7 +679,6 @@ const DashboardView: React.FC = () => {
          <div className="lg:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-w-0 overflow-hidden">
            <h3 className="font-bold text-gray-700 mb-6 pb-2">交易量分布</h3>
            <div className="h-[300px] w-full" style={{ minWidth: 0 }}>
-             {/* Added minWidth={0} minHeight={0} to suppress 'width(-1)' warning */}
              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -511,6 +705,73 @@ const DashboardView: React.FC = () => {
       <div className="w-full">
         <LiveLogger />
       </div>
+
+      {/* Global Date Picker Modal */}
+      {isDatePickerOpen && (
+          <div 
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/30 backdrop-blur-[2px] p-4 animate-in fade-in duration-200"
+            onClick={handleBackdropClick}
+          >
+              <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-[360px] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-200">
+                  <div className="flex justify-between items-center p-4 border-b border-gray-100">
+                      <div>
+                          <h4 className="text-base font-bold text-gray-800">自定义日期范围</h4>
+                          <p className="text-xs text-gray-400 mt-0.5">点击选择开始和结束日期</p>
+                      </div>
+                      <button onClick={() => setIsDatePickerOpen(false)} className="text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100 transition-colors">
+                          <X className="w-5 h-5" />
+                      </button>
+                  </div>
+
+                  <div className="bg-slate-50 px-4 py-3 flex gap-2">
+                     <div className={`flex-1 flex flex-col p-2 rounded-lg border ${!dateRange.start ? 'border-blue-500 bg-white ring-2 ring-blue-500/20' : 'border-gray-200 bg-white'}`}>
+                        <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">开始日期</span>
+                        <span className={`text-sm font-bold ${dateRange.start ? 'text-gray-800' : 'text-gray-300'}`}>
+                            {dateRange.start || 'YYYY-MM-DD'}
+                        </span>
+                     </div>
+                     <div className="flex items-center text-gray-300">
+                        <ChevronRight className="w-4 h-4" />
+                     </div>
+                     <div className={`flex-1 flex flex-col p-2 rounded-lg border ${dateRange.start && !dateRange.end ? 'border-blue-500 bg-white ring-2 ring-blue-500/20' : 'border-gray-200 bg-white'}`}>
+                        <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">结束日期</span>
+                        <span className={`text-sm font-bold ${dateRange.end ? 'text-gray-800' : 'text-gray-300'}`}>
+                            {dateRange.end || 'YYYY-MM-DD'}
+                        </span>
+                     </div>
+                  </div>
+                  
+                  <RangeCalendar 
+                      startDate={dateRange.start}
+                      endDate={dateRange.end}
+                      onChange={(start, end) => setDateRange({start, end})}
+                  />
+                  
+                  <div className="p-4 border-t border-gray-100 flex gap-3">
+                      <button 
+                          onClick={handleClear}
+                          className="px-3 py-2.5 border border-gray-200 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-red-500 transition-colors"
+                          title="清除"
+                      >
+                          <Trash2 className="w-5 h-5" />
+                      </button>
+                      <button 
+                          onClick={() => setIsDatePickerOpen(false)}
+                          className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors"
+                      >
+                          取消
+                      </button>
+                      <button 
+                          onClick={handleCustomDateApply}
+                          disabled={!dateRange.start || !dateRange.end}
+                          className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed transform active:scale-[0.98]"
+                      >
+                          应用日期
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 };
