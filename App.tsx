@@ -129,7 +129,7 @@ const UserProfileWidget: React.FC = () => {
     const buttonRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
+        const handleClickOutside = (event: MouseEvent | TouchEvent) => {
             if (
                 dropdownRef.current && 
                 !dropdownRef.current.contains(event.target as Node) &&
@@ -141,11 +141,15 @@ const UserProfileWidget: React.FC = () => {
         };
 
         document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside);
+        return () => {
+          document.removeEventListener('mousedown', handleClickOutside);
+          document.removeEventListener('touchstart', handleClickOutside);
+        };
     }, []);
 
     return (
-        <div className="flex items-center gap-3 md:gap-4 relative ml-4 pl-4 border-l border-gray-200">
+        <div className="flex items-center gap-3 md:gap-4 relative sm:ml-4 sm:pl-4 sm:border-l border-gray-200 w-full sm:w-auto justify-between sm:justify-start">
             {/* Avatar & Info */}
             <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-blue-100 overflow-hidden border-2 border-white shadow-sm flex-shrink-0">
@@ -176,7 +180,7 @@ const UserProfileWidget: React.FC = () => {
             {isOpen && (
                 <div 
                     ref={dropdownRef}
-                    className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 z-50 animate-in fade-in zoom-in-95 duration-200 overflow-hidden"
+                    className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 z-50 animate-in fade-in zoom-in-95 duration-200 overflow-hidden origin-top-right"
                 >
                     <div className="py-1">
                         <button className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors">
@@ -195,7 +199,7 @@ const UserProfileWidget: React.FC = () => {
     );
 };
 
-const AlertBanner: React.FC = () => (
+const AlertBanner: React.FC<{ onClose: () => void }> = ({ onClose }) => (
     <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r-lg flex justify-between items-start animate-fade-in shadow-sm">
       <div className="flex">
         <div className="flex-shrink-0 mt-0.5">
@@ -209,7 +213,10 @@ const AlertBanner: React.FC = () => (
         </div>
       </div>
       <div className="ml-auto pl-3">
-        <button className="inline-flex rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none transition-colors">
+        <button 
+            onClick={onClose}
+            className="inline-flex rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none transition-colors"
+        >
             <span className="sr-only">Dismiss</span>
             <X className="h-5 w-5" />
         </button>
@@ -233,7 +240,8 @@ const AnalysisSection: React.FC = () => {
         
         {/* Fixed height container for Recharts to prevent width(-1) error */}
         <div className="relative w-full h-[250px]">
-            <ResponsiveContainer width="100%" height="100%" debounce={300}>
+            {/* Added minWidth={0} minHeight={0} to suppress 'width(-1)' warning */}
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <PieChart>
                     <Pie
                         data={accountStatusData}
@@ -352,6 +360,7 @@ const AnalysisSection: React.FC = () => {
 
 const DashboardView: React.FC = () => {
   const [timeRange, setTimeRange] = useState('7D');
+  const [isAlertVisible, setIsAlertVisible] = useState(true);
 
   // Dynamic Data Logic
   const chartData = useMemo(() => {
@@ -366,7 +375,7 @@ const DashboardView: React.FC = () => {
     <div className="space-y-6">
       
       {/* Alert Banner for Critical Issues */}
-      <AlertBanner />
+      {isAlertVisible && <AlertBanner onClose={() => setIsAlertVisible(false)} />}
 
       {/* Top Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -429,7 +438,8 @@ const DashboardView: React.FC = () => {
           </div>
 
           <div className="h-[300px] w-full" style={{ minWidth: 0 }}>
-            <ResponsiveContainer width="100%" height="100%" debounce={300}>
+            {/* Added minWidth={0} minHeight={0} to suppress 'width(-1)' warning */}
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
@@ -474,7 +484,8 @@ const DashboardView: React.FC = () => {
          <div className="lg:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-w-0 overflow-hidden">
            <h3 className="font-bold text-gray-700 mb-6 pb-2">交易量分布</h3>
            <div className="h-[300px] w-full" style={{ minWidth: 0 }}>
-             <ResponsiveContainer width="100%" height="100%" debounce={300}>
+             {/* Added minWidth={0} minHeight={0} to suppress 'width(-1)' warning */}
+             <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis 
@@ -518,12 +529,12 @@ const App: React.FC = () => {
             <p className="text-slate-500 text-sm mt-1">FUT Bot 实时交易监控与数据分析</p>
           </div>
           
-          <div className="flex items-center">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-0 w-full lg:w-auto">
             {/* Tab Switcher */}
-            <div className="bg-white p-1 rounded-lg border border-gray-200 inline-flex shadow-sm">
+            <div className="bg-white p-1 rounded-lg border border-gray-200 flex sm:inline-flex shadow-sm">
                 <button 
                 onClick={() => setCurrentTab(TabView.DASHBOARD)}
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                className={`flex-1 sm:flex-none flex items-center justify-center sm:justify-start px-4 py-2 text-sm font-medium rounded-md transition-all ${
                     currentTab === TabView.DASHBOARD 
                     ? 'bg-blue-600 text-white shadow-sm' 
                     : 'text-gray-600 hover:bg-gray-50'
@@ -534,7 +545,7 @@ const App: React.FC = () => {
                 </button>
                 <button 
                 onClick={() => setCurrentTab(TabView.LOGS)}
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                className={`flex-1 sm:flex-none flex items-center justify-center sm:justify-start px-4 py-2 text-sm font-medium rounded-md transition-all ${
                     currentTab === TabView.LOGS 
                     ? 'bg-blue-600 text-white shadow-sm' 
                     : 'text-gray-600 hover:bg-gray-50'

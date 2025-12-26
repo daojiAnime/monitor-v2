@@ -162,7 +162,7 @@ const LiveLogger: React.FC = () => {
             'bg-red-500/10 text-red-400'
           }`}>
             {connectionStatus === 'connected' ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-            <span>{connectionStatus === 'connected' ? 'LIVE' : connectionStatus}</span>
+            <span className="hidden sm:inline">{connectionStatus === 'connected' ? 'LIVE' : connectionStatus}</span>
           </div>
         </div>
 
@@ -181,14 +181,14 @@ const LiveLogger: React.FC = () => {
                 title={isPaused ? "Resume Feed" : "Pause Feed"}
             >
                 {isPaused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
-                <span>{isPaused ? 'RESUME' : 'PAUSE'}</span>
+                <span className="hidden sm:inline">{isPaused ? 'RESUME' : 'PAUSE'}</span>
             </button>
         </div>
       </div>
 
       <div 
         ref={scrollViewportRef}
-        className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-xs log-scrollbar bg-[#1e293b]"
+        className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-0 sm:space-y-1 font-mono text-xs log-scrollbar bg-[#1e293b]"
       >
         {logs.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-gray-500 italic space-y-2">
@@ -197,24 +197,31 @@ const LiveLogger: React.FC = () => {
             </div>
         )}
         {logs.map((log) => (
-          <div key={log.id} className="flex items-start space-x-3 hover:bg-[#2d3b52] p-1 rounded transition-colors duration-75 group">
-            <span className="text-gray-600 group-hover:text-gray-500 flex-shrink-0 w-20">
+          <div key={log.id} className="flex flex-wrap sm:flex-nowrap items-baseline sm:items-start gap-x-2 sm:gap-x-3 hover:bg-[#2d3b52] p-2 sm:p-1 rounded transition-colors duration-75 group border-b border-gray-800 sm:border-0">
+            
+            {/* Metadata Group (Time, Type, Account) - Wraps on Mobile, Columns on Desktop */}
+            <span className="text-gray-500 group-hover:text-gray-400 text-[10px] sm:text-xs font-mono shrink-0 sm:w-20">
               {log.timestamp.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second:'2-digit' })}
             </span>
-            <span className={`font-bold flex-shrink-0 w-16 ${getLogColor(log.type)}`}>
+            <span className={`font-bold text-[10px] sm:text-xs shrink-0 sm:w-16 ${getLogColor(log.type)}`}>
               [{log.type}]
             </span>
-            <span className="text-blue-300/80 group-hover:text-blue-300 flex-shrink-0 w-24 truncate" title={log.account}>
+            <span className="text-blue-300/80 group-hover:text-blue-300 text-[10px] sm:text-xs shrink-0 sm:w-24 truncate" title={log.account}>
               @{log.account}
             </span>
-            <span className="text-gray-400 group-hover:text-gray-300 flex-grow break-all">
-              {log.message}
-            </span>
-            {log.amount && (
-                <span className="text-green-500/90 group-hover:text-green-400 font-bold flex-shrink-0">
-                    {log.amount}
-                </span>
-            )}
+
+            {/* Force line break on mobile only */}
+            <div className="basis-full h-0 sm:hidden"></div>
+
+            {/* Message & Amount */}
+            <div className="text-xs sm:text-xs text-gray-300 w-full sm:w-auto sm:flex-grow break-words mt-0.5 sm:mt-0 leading-tight sm:leading-normal flex justify-between gap-2">
+                 <span>{log.message}</span>
+                 {log.amount && (
+                    <span className="text-green-500/90 group-hover:text-green-400 font-bold shrink-0">
+                        {log.amount}
+                    </span>
+                )}
+            </div>
           </div>
         ))}
       </div>
