@@ -32,6 +32,47 @@
         background: #475569;
         border-radius: 3px;
       }
+
+      /* AGGRESSIVE FOCUS RESET */
+      /* Removes all default browser focus outlines and Tailwind rings */
+      *, *::before, *::after {
+        -webkit-tap-highlight-color: transparent;
+      }
+      
+      *:focus, *:focus-visible, *.focus-visible {
+        outline: none !important;
+        box-shadow: none !important;
+        ring: 0 !important;
+      }
+
+      /* Specific Recharts fixes */
+      .recharts-wrapper {
+        outline: none !important;
+        border: none !important;
+      }
+      
+      .recharts-surface:focus {
+        outline: none !important;
+      }
+      
+      .recharts-sector:focus {
+        outline: none !important;
+      }
+
+      /* Hide default scrollbar for some containers if needed */
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f5f9;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 2px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
     </style>
   <script type="importmap">
 {
